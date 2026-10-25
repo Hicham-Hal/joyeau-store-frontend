@@ -1,0 +1,260 @@
+@import "tailwindcss";
+
+/* Fonts are loaded from index.html (Google Fonts):
+   Pinyon Script · Cormorant Garamond · Jost · El Messiri · Tajawal */
+
+@theme {
+  --font-serif: "Cormorant Garamond", "El Messiri", Georgia, serif;
+  --font-sans: "Jost", "Tajawal", system-ui, sans-serif;
+  --font-script: "Pinyon Script", "Cormorant Garamond", cursive;
+
+  --color-blush-50: #fdf3f6;
+  --color-blush-100: #fbe6ed;
+  --color-blush-200: #f6cedd;
+  --color-blush-300: #f0abc3;
+  --color-blush-400: #e67ea3;
+  --color-blush-500: #d85786;
+  --color-blush-600: #c23a6a;
+  --color-blush-700: #a22a54;
+  --color-blush-800: #862548;
+  --color-blush-900: #71223f;
+
+  --color-gold-50: #fbf6ee;
+  --color-gold-100: #f5e9d3;
+  --color-gold-200: #ecd4a8;
+  --color-gold-300: #e0b874;
+  --color-gold-400: #d3a04e;
+  --color-gold-500: #bb8538;
+  --color-gold-600: #9c6a2d;
+  --color-gold-700: #7e5328;
+  --color-gold-800: #684526;
+  --color-gold-900: #583b23;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #fffaf9;
+  color: #3a2a2f;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+
+img,
+video {
+  max-width: 100%;
+}
+
+/* ---- Fonts: Latin / Arabic ------------------------------------------------ */
+.font-serif {
+  font-family: var(--font-serif);
+}
+.font-script {
+  font-family: var(--font-script);
+}
+
+[dir="rtl"] body {
+  font-family: "Tajawal", var(--font-sans);
+}
+[dir="rtl"] .font-serif,
+[dir="rtl"] .font-script {
+  font-family: "El Messiri", var(--font-serif);
+  letter-spacing: 0 !important;
+}
+/* Arabic letters must stay connected: never add letter-spacing */
+[dir="rtl"] .tracking-wide,
+[dir="rtl"] .tracking-wider,
+[dir="rtl"] .tracking-widest,
+[dir="rtl"] [class*="tracking-["] {
+  letter-spacing: 0 !important;
+}
+
+/* Titles use a light elegant serif: give it a little weight so it stays readable
+   on small screens. (components layer = Tailwind utilities like font-bold still win) */
+@layer components {
+  .font-serif {
+    font-weight: 600;
+  }
+  .font-script {
+    font-weight: 400;
+  }
+}
+
+/* ---- Form fields (used by checkout, payment, contact, dashboard) --------- */
+.input-field {
+  width: 100%;
+  border: 1px solid #f6cedd;
+  background: white;
+  border-radius: 0.9rem;
+  padding: 0.75rem 1rem;
+  /* 16px prevents the automatic zoom on iPhone when a field is focused */
+  font-size: 1rem;
+  line-height: 1.4;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  min-height: 48px;
+}
+textarea.input-field {
+  min-height: 0;
+}
+.input-field::placeholder {
+  color: #b5a6aa;
+}
+.input-field:focus {
+  border-color: #d85786;
+  box-shadow: 0 0 0 3px #f6cedd77;
+}
+
+/* ---- Helpers --------------------------------------------------------------- */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+/* Scrollbar (desktop) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-blush-50);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-blush-300);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-blush-400);
+}
+
+/* ---- Animations ------------------------------------------------------------ */
+@keyframes marquee-ltr {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee-ltr 40s linear infinite;
+}
+[dir="rtl"] .animate-marquee {
+  animation-direction: reverse;
+}
+.marquee-pause:hover .animate-marquee {
+  animation-play-state: paused;
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.reveal {
+  animation: fade-in-up 0.8s ease forwards;
+}
+
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, #f6cedd33 25%, #f6cedd77 37%, #f6cedd33 63%);
+  background-size: 800px 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* Gold / rose-gold text that slowly "shines" */
+@keyframes text-shine {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+.text-gradient-gold {
+  background: linear-gradient(90deg, var(--color-gold-400), var(--color-blush-500) 60%, var(--color-gold-500));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.text-shine-gold {
+  background: linear-gradient(100deg, #e0b874 0%, #fff3d6 25%, #d3a04e 50%, #f6d9a0 75%, #e0b874 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: text-shine 5s linear infinite;
+}
+/* Rose-gold: same colour as the logo lettering */
+.text-rosegold {
+  background: linear-gradient(100deg, #8a4b30 0%, #c98a62 30%, #a35f3c 55%, #d9a07a 80%, #8a4b30 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: text-shine 7s linear infinite;
+}
+
+@keyframes soft-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.animate-soft-float {
+  animation: soft-float 3.2s ease-in-out infinite;
+}
+
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+.btn-shine::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.55), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.75s ease;
+}
+.btn-shine:hover::after,
+.btn-shine:active::after {
+  left: 125%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .animate-marquee,
+  .text-shine-gold,
+  .text-rosegold,
+  .animate-soft-float,
+  .shimmer {
+    animation: none !important;
+  }
+}
+
+/* ---- Brand lettering (same style as the logo) -------------------------------
+   Always Latin script, even when the site is in Arabic. */
+.font-brand,
+[dir="rtl"] .font-brand {
+  font-family: "Pinyon Script", "Cormorant Garamond", cursive;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.brand-sub,
+[dir="rtl"] .brand-sub {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 600;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+}
