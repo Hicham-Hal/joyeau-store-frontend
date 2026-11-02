@@ -229,7 +229,7 @@ export default function DashboardProducts() {
             <Labeled label={`${t.dashboard.productName} (AR)`}>
               <input value={form.nameAr} onChange={(e) => set("nameAr", e.target.value)} className="input-field" dir="rtl" />
             </Labeled>
-            <Labeled label={t.dashboard.category}>
+            {/* <Labeled label={t.dashboard.category}>
               <select required value={form.category} onChange={(e) => set("category", e.target.value)} className="input-field">
                 {!form.category && <option value="">—</option>}
                 {categories.map((c) => (
@@ -238,7 +238,7 @@ export default function DashboardProducts() {
                   </option>
                 ))}
               </select>
-            </Labeled>
+            </Labeled> */}
             <Labeled label={t.dashboard.price}>
               <input required type="number" inputMode="numeric" min="0" value={form.price} onChange={(e) => set("price", e.target.value)} className="input-field" />
             </Labeled>
