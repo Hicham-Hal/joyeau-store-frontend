@@ -1,6 +1,7 @@
 import axiosClient, { USE_MOCK } from "../api/axiosClient";
 import { getDb, updateDb, delay } from "./mockDb";
 import { normalizeProduct, normalizeProducts } from "../utils/product";
+import {fromApi, toApi} from '../lib/productMapper.js'
 
 // Backend contract:
 //   GET    /products        -> Product[]
@@ -15,7 +16,7 @@ export async function fetchProducts() {
     return normalizeProducts(getDb().products);
   }
   const { data } = await axiosClient.get("/products");
-  return normalizeProducts(data);
+  return normalizeProducts(data.map(fromApi));
 }
 
 // Resolves to `null` when the product does not exist (so the page can show "not found").
@@ -27,7 +28,7 @@ export async function fetchProductById(id) {
   }
   try {
     const { data } = await axiosClient.get(`/products/${id}`);
-    return normalizeProduct(data);
+    return normalizeProduct(fromApi(data));
   } catch (error) {
     if (error?.response?.status === 404) return null;
     throw error;
@@ -45,8 +46,8 @@ export async function createProduct(payload) {
     });
     return normalizeProduct(created);
   }
-  const { data } = await axiosClient.post("/products", payload);
-  return normalizeProduct(data);
+  const { data } = await axiosClient.post("/products", toApi(payload));
+  return normalizeProduct(fromApi(data));
 }
 
 export async function updateProduct(id, payload) {
@@ -64,8 +65,8 @@ export async function updateProduct(id, payload) {
     });
     return normalizeProduct(updated);
   }
-  const { data } = await axiosClient.put(`/products/${id}`, payload);
-  return normalizeProduct(data);
+  const { data } = await axiosClient.put(`/products/${id}`, toApi(payload));
+  return normalizeProduct(fromApi(data));
 }
 
 export async function deleteProduct(id) {

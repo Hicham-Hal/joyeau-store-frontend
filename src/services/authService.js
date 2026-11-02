@@ -13,8 +13,13 @@ export async function login(username, password) {
     }
     throw new Error("invalid_credentials");
   }
-  const { data } = await axiosClient.post("/auth/login", { username, password });
-  return { token: data.token, user: data.user ?? { username } };
+  const { data } = await axiosClient.post("/auth/login", { email: username, password });
+  const u = data.user || {}
+  if(u.role && u.role !== "admin") throw new Error("not_admin")
+  return {
+    token: data.accessToken,
+    user: {name: u.name, email: u.email, role: u.role}
+  };
 }
 
 export function saveSession({ token, user }) {
