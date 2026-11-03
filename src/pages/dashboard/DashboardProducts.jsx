@@ -11,14 +11,16 @@ import { useLang } from "../../context/LanguageContext";
 import { useAppDispatch, useAppSelector, useCategories, useCategoryLabel } from "../../store/hooks";
 import { fetchProducts, createProduct, updateProduct, deleteProduct } from "../../store/slices/productsSlice";
 import { formatPrice } from "../../components/PriceTag";
+import { slugify } from "../../utils/product";
 import Modal from "../../components/Modal";
 import ErrorMessage from "../../components/ErrorMessage";
+import CategoryCombobox, { normalize } from "../../components/CategoryCombobox";
 import { MediaPicker, MediaListInput, MediaThumb } from "../../components/MediaInputs";
 
 const emptyColor = () => ({ name: "", url: "", type: "image" });
 
-const makeEmptyForm = (category = "") => ({
-  category,
+const makeEmptyForm = () => ({
+  categoryText: "", // name of an existing category, or a new one to create on save
   nameFr: "",
   nameAr: "",
   price: "",
@@ -65,7 +67,7 @@ export default function DashboardProducts() {
 
   function openCreate() {
     setEditing(null);
-    setForm(makeEmptyForm(categories[0]?.id || ""));
+    setForm(makeEmptyForm());
     setFormError("");
     setModalOpen(true);
   }
@@ -74,7 +76,7 @@ export default function DashboardProducts() {
     setEditing(p);
     setFormError("");
     setForm({
-      category: p.category,
+      categoryText: getCategoryLabel(p.category, lang),
       nameFr: p.name.fr,
       nameAr: p.name.ar,
       price: p.price,
@@ -103,11 +105,12 @@ export default function DashboardProducts() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    const categoryText = form.categoryText.trim();
     const colors = form.colors
       .filter((c) => c.name.trim())
       .map((c) => ({ name: c.name.trim(), url: c.url || "", type: c.type === "video" ? "video" : "image" }));
 
-    if (!form.category) {
+    if (!categoryText) {
       setFormError(t.dashboard.needCategory);
       return;
     }
@@ -118,21 +121,31 @@ export default function DashboardProducts() {
 
     setSaving(true);
     setFormError("");
-    const payload = {
-      category: form.category,
-      name: { fr: form.nameFr.trim(), ar: form.nameAr.trim() || form.nameFr.trim() },
-      price: Number(form.price) || 0,
-      prepDays: Number(form.prepDays) || 0,
-      sizes: form.sizes.split(",").map((s) => s.trim()).filter(Boolean),
-      colors,
-      images: form.images,
-      video: form.video,
-      description: { fr: form.descriptionFr, ar: form.descriptionAr || form.descriptionFr },
-      isBestSeller: form.isBestSeller,
-      isNew: form.isNew,
-      stock: form.stock,
-    };
     try {
+      // the category is part of the product: reuse an existing one (same name) or define a new one
+      const q = normalize(categoryText);
+      const existing = categories.find((c) => normalize(c.fr) === q || normalize(c.ar) === q);
+      const categoryId = existing ? existing.id : slugify(categoryText) || "collection";
+      const categoryName = existing
+        ? { fr: existing.fr, ar: existing.ar }
+        : { fr: categoryText, ar: categoryText };
+
+      const payload = {
+        category: categoryId,
+        categoryName,
+        name: { fr: form.nameFr.trim(), ar: form.nameAr.trim() || form.nameFr.trim() },
+        price: Number(form.price) || 0,
+        prepDays: Number(form.prepDays) || 0,
+        sizes: form.sizes.split(",").map((s) => s.trim()).filter(Boolean),
+        colors,
+        images: form.images,
+        video: form.video,
+        description: { fr: form.descriptionFr, ar: form.descriptionAr || form.descriptionFr },
+        isBestSeller: form.isBestSeller,
+        isNew: form.isNew,
+        stock: form.stock,
+      };
+
       if (editing) {
         await dispatch(updateProduct({ id: editing.id, payload })).unwrap();
       } else {
@@ -141,7 +154,7 @@ export default function DashboardProducts() {
       setModalOpen(false);
     } catch (err) {
       // the modal stays open so nothing typed is lost
-      setFormError(err?.message === "storage_full" ? t.upload.storageFull : t.common.error);
+      setFormError(t.common.error);
     } finally {
       setSaving(false);
     }
@@ -229,16 +242,16 @@ export default function DashboardProducts() {
             <Labeled label={`${t.dashboard.productName} (AR)`}>
               <input value={form.nameAr} onChange={(e) => set("nameAr", e.target.value)} className="input-field" dir="rtl" />
             </Labeled>
-            {/* <Labeled label={t.dashboard.category}>
-              <select required value={form.category} onChange={(e) => set("category", e.target.value)} className="input-field">
-                {!form.category && <option value="">—</option>}
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c[lang] || c.fr}
-                  </option>
-                ))}
-              </select>
-            </Labeled> */}
+            <Labeled label={t.dashboard.category}>
+              <CategoryCombobox
+                value={form.categoryText}
+                onChange={(v) => set("categoryText", v)}
+                categories={categories}
+                lang={lang}
+                placeholder={lang === "ar" ? "اختر أو اكتب فئة جديدة" : "Choisir ou créer une catégorie"}
+                newHint={lang === "ar" ? "فئة جديدة:" : "Nouvelle catégorie :"}
+              />
+            </Labeled>
             <Labeled label={t.dashboard.price}>
               <input required type="number" inputMode="numeric" min="0" value={form.price} onChange={(e) => set("price", e.target.value)} className="input-field" />
             </Labeled>

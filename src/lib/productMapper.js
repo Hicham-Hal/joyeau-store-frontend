@@ -2,6 +2,14 @@
 export const fromApi = (p) => ({
   ...p,
   id: p._id ?? p.id,
+  name: {
+    fr: p.name?.fr || p.title || "",
+    ar: p.name?.ar || p.name?.fr || p.title || "",
+  },
+  description: {
+    fr: p.description?.fr || (typeof p.description === "string" ? p.description : ""),
+    ar: p.description?.ar || p.description?.fr || "",
+  },
   prepDays: p.preparationDays ?? 0,
   isNew: !!p.isNewArrival,
   stock: p.inStock !== false,
@@ -19,6 +27,7 @@ export const fromApi = (p) => ({
 // frontend -> API
 export const toApi = (p) => ({
   category: p.category,
+  categoryName: p.categoryName,
   name: p.name,
   price: p.price,
   preparationDays: p.prepDays,

@@ -62,6 +62,9 @@ export async function uploadFile(file) {
 
   const form = new FormData();
   form.append("file", file);
-  const { data } = await axiosClient.post("/uploads", form, { timeout: 120000 });
+  const { data } = await axiosClient.post("/uploads", form, {
+    timeout: 120000,
+    headers: { "Content-Type": "multipart/form-data" }
+  });
   return { url: data.url, type };
 }
