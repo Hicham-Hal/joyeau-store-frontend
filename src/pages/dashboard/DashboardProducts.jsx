@@ -11,6 +11,7 @@ import { useLang } from "../../context/LanguageContext";
 import { useAppDispatch, useAppSelector, useCategories, useCategoryLabel } from "../../store/hooks";
 import { fetchProducts, createProduct, updateProduct, deleteProduct } from "../../store/slices/productsSlice";
 import { formatPrice } from "../../components/PriceTag";
+import { fetchCategories } from "../../store/slices/categoriesSlice";
 import { slugify } from "../../utils/product";
 import Modal from "../../components/Modal";
 import ErrorMessage from "../../components/ErrorMessage";
@@ -151,10 +152,13 @@ export default function DashboardProducts() {
       } else {
         await dispatch(createProduct(payload)).unwrap();
       }
+      dispatch(fetchCategories()); // a new collection may have been created
       setModalOpen(false);
     } catch (err) {
       // the modal stays open so nothing typed is lost
-      setFormError(t.common.error);
+      console.error("[SAVE PRODUCT]", err);
+      const detail = err?.message && err.message !== "unknown_error" ? ` — ${err.message}` : "";
+      setFormError(`${t.common.error}${err?.status ? ` (${err.status})` : ""}${detail}`);
     } finally {
       setSaving(false);
     }
