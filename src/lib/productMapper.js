@@ -1,13 +1,15 @@
+// Converts between the backend model names and the names the frontend uses.
+
 // API -> frontend
 export const fromApi = (p) => ({
   ...p,
   id: p._id ?? p.id,
   name: {
-    fr: p.name?.fr || p.title || "",
-    ar: p.name?.ar || p.name?.fr || p.title || "",
+    fr: p.name?.fr || "",
+    ar: p.name?.ar || p.name?.fr || "",
   },
   description: {
-    fr: p.description?.fr || (typeof p.description === "string" ? p.description : ""),
+    fr: p.description?.fr || "",
     ar: p.description?.ar || p.description?.fr || "",
   },
   prepDays: p.preparationDays ?? 0,
@@ -27,7 +29,7 @@ export const fromApi = (p) => ({
 // frontend -> API
 export const toApi = (p) => ({
   category: p.category,
-  categoryName: p.categoryName,
+  categoryName: p.categoryName, // only used to create the collection if it is new
   name: p.name,
   price: p.price,
   preparationDays: p.prepDays,
