@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { HiOutlinePlus, HiOutlineChevronDown, HiOutlineCheck } from "react-icons/hi2";
+import { HiOutlineChevronDown, HiOutlineCheck } from "react-icons/hi2";
 
 // accent- and case-insensitive comparison ("Robes de Mariée" == "robes de mariee")
 export const normalize = (s) =>
   String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
 
-export default function CategoryCombobox({ value, onChange, categories, lang, placeholder, createLabel }) {
+export default function CategoryCombobox({ value, onChange, categories, lang, placeholder, newHint }) {
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState(false); // filter only after the user types
   const ref = useRef(null);
@@ -63,7 +63,7 @@ export default function CategoryCombobox({ value, onChange, categories, lang, pl
         <HiOutlineChevronDown size={18} className={open ? "rotate-180 transition" : "transition"} />
       </button>
 
-      {open && (list.length > 0 || showCreate) && (
+      {open && list.length > 0 && (
         <ul className="absolute z-30 mt-1 w-full max-h-56 overflow-auto rounded-xl bg-white ring-1 ring-blush-200 shadow-lg py-1">
           {list.map((c) => {
             const active = normalize(labelOf(c)) === q;
@@ -80,18 +80,13 @@ export default function CategoryCombobox({ value, onChange, categories, lang, pl
               </li>
             );
           })}
-          {showCreate && (
-            <li>
-              <button
-                type="button"
-                onClick={() => pick(value.trim())}
-                className="w-full flex items-center gap-2 px-4 min-h-[44px] text-start text-sm font-semibold text-gold-700 border-t border-blush-100 active:bg-gold-50 hover:bg-gold-50"
-              >
-                <HiOutlinePlus size={16} /> {createLabel} « {value.trim()} »
-              </button>
-            </li>
-          )}
         </ul>
+      )}
+
+      {showCreate && (
+        <p className="mt-1.5 text-xs text-gold-700">
+          {newHint} « {value.trim()} »
+        </p>
       )}
     </div>
   );
