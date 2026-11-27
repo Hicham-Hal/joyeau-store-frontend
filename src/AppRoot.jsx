@@ -6,7 +6,7 @@ import { store } from "./store";
 import { useAppDispatch } from "./store/hooks";
 import { fetchStoreStatus } from "./store/slices/shopSlice";
 import { fetchCategories } from "./store/slices/categoriesSlice";
-
+import React from 'react'
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import About from "./pages/About";
@@ -62,13 +62,13 @@ export default function AppRoot() {
 
               <Route path="/espace-vendeur" element={<DashboardLogin />} />
               <Route path="/espace-vendeur" element={<DashboardLayout />}>
-                <Route path="tableau-de-bord" element={<DashboardOverview />} />
+                {/* <Route path="tableau-de-bord" element={<DashboardOverview />} /> */}
                 <Route path="produits" element={<DashboardProducts />} />
                 <Route path="collections" element={<DashboardCategories />} />
                 <Route path="galerie" element={<DashboardGallery />} />
                 <Route path="commandes" element={<DashboardOrders />} />
                 <Route path="livraison" element={<DashboardDelivery />} />
-                <Route path="messages" element={<DashboardMessages />} />
+                {/* <Route path="messages" element={<DashboardMessages />} /> */}
               </Route>
 
               <Route path="*" element={<Layout />}>
