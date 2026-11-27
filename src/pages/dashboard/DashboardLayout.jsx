@@ -25,13 +25,13 @@ export default function DashboardLayout() {
   if (!user) return <Navigate to="/espace-vendeur" replace />;
 
   const links = [
-    { to: "/espace-vendeur/tableau-de-bord", label: t.dashboard.overview, icon: HiOutlineSquares2X2 },
+    // { to: "/espace-vendeur/tableau-de-bord", label: t.dashboard.overview, icon: HiOutlineSquares2X2 },
     { to: "/espace-vendeur/produits", label: t.dashboard.products, icon: HiOutlineShoppingBag },
     { to: "/espace-vendeur/collections", label: t.dashboard.categories, icon: HiOutlineRectangleStack },
     { to: "/espace-vendeur/galerie", label: t.dashboard.gallery, icon: HiOutlinePhoto },
     { to: "/espace-vendeur/commandes", label: t.dashboard.orders, icon: HiOutlineClipboardDocumentList },
     { to: "/espace-vendeur/livraison", label: t.dashboard.delivery, icon: HiOutlineTruck },
-    { to: "/espace-vendeur/messages", label: t.dashboard.messages, icon: HiOutlineChatBubbleLeftRight },
+    // { to: "/espace-vendeur/messages", label: t.dashboard.messages, icon: HiOutlineChatBubbleLeftRight },
   ];
 
   function handleLogout() {
