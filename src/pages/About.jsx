@@ -1,14 +1,54 @@
 import { useLang } from "../context/LanguageContext";
-import { ATELIER_GALLERY } from "../data/products";
 import SectionHeading from "../components/SectionHeading";
 import ImageMarquee from "../components/ImageMarquee";
 import Reveal from "../components/Reveal";
 import { Link } from "react-router-dom";
 import { HiOutlineCheckBadge } from "react-icons/hi2";
 import { HiOutlineCurrencyDollar } from "react-icons/hi";
+import { useEffect, useMemo, useState } from "react";
+import { HERO_IMAGES, HERO_POSITIONS, UNIVERS_DRESSES } from "../data/siteImages";
+import { ATELIER_GALLERY, FABRIC_STRIP } from "../data/products";
+import axiosClient from "../api/axiosClient";
+
 
 export default function About() {
   const { t } = useLang();
+  const [aboutGallery, setAboutGallery] = useState([]);
+  
+  function mixStrip(fabrics, dresses) {
+    const mixed = [];
+    const length = Math.max(fabrics.length, dresses.length);
+    for (let i = 0; i < length; i += 1) {
+      if (fabrics[i]) mixed.push(fabrics[i]);
+      if (dresses[i]) mixed.push(dresses[i]);
+    }
+    return mixed;
+  }
+
+  useEffect(() => {
+    let active = true;
+    axiosClient.get('/gallery', { params: { placement: 'about' } })
+      .then((res) => {
+        const items = res.data
+        if (!active || !Array.isArray(items)) return;
+  
+        const urls = items
+          .filter((item) => item.type !== 'video')
+          .map((item) => item.url)
+  
+        setAboutGallery(urls);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const strip = useMemo(() => {
+      const dresses = aboutGallery.length ? [...aboutGallery, ...ATELIER_GALLERY] : ATELIER_GALLERY;
+      return mixStrip(ATELIER_GALLERY, dresses);
+    },[aboutGallery]
+  )
 
   return (
     <div>
@@ -57,7 +97,7 @@ export default function About() {
         <Reveal className="text-center mb-6">
           <h3 className="font-script text-[2rem] md:text-5xl text-rosegold leading-tight">{t.about.galleryTitle}</h3>
         </Reveal>
-        <ImageMarquee images={ATELIER_GALLERY} />
+        <ImageMarquee images={strip} />
       </section>
 
       {/* How to order steps */}
