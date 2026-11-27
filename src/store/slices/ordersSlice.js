@@ -26,6 +26,9 @@ export const createOrder = apiThunk("orders/create", (orderData) => orderService
 // online -> the order becomes "confirmed", post -> "pending" (the seller checks the receipt)
 export const payOrder = apiThunk("orders/pay", ({ id, payment }) => orderService.payOrder(id, payment));
 
+// After the card payment page: refresh the status of the order of this browser.
+export const refreshOrderStatus = apiThunk("orders/refreshStatus", (id) => orderService.fetchOrderStatus(id));
+
 // Seller dashboard
 export const fetchOrders = apiThunk("orders/fetchAll", () => orderService.fetchOrders());
 
@@ -48,6 +51,11 @@ const ordersSlice = createSlice({
         if (state.current && sameId(state.current.id, updated.id)) state.current = { ...state.current, ...updated };
         const order = state.items.find((o) => sameId(o.id, updated.id));
         if (order) Object.assign(order, updated);
+      })
+      .addCase(refreshOrderStatus.fulfilled, (state, action) => {
+        const updated = action.payload;
+        if (!updated) return;
+        if (state.current && sameId(state.current.id, updated.id)) state.current = { ...state.current, ...updated };
       })
       .addCase(fetchOrders.pending, (state) => {
         state.status = "loading";

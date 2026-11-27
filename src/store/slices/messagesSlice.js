@@ -1,14 +1,28 @@
 import { createSlice } from "@reduxjs/toolkit";
+import emailjs from "@emailjs/browser";
 import { apiThunk, errorFrom } from "../apiThunk";
 import * as messageService from "../../services/messageService";
 
 const sameId = (a, b) => String(a) === String(b);
 
-// Public contact form. Nothing is stored in the state: the seller dashboard
-// loads the inbox itself.
-export const sendMessage = apiThunk("messages/send", (payload) => messageService.sendMessage(payload));
+const SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+const TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+const PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
-// Seller dashboard
+// Sends the visitor form directly to email via EmailJS instead of the backend inbox API.
+export const sendMessage = apiThunk("messages/send", async (payload) => {
+  const templateParams = {
+    from_name: payload.name.trim(),
+    phone: payload.phone.trim(),
+    message: payload.message.trim(),
+  };
+
+  return emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams, {
+    publicKey: PUBLIC_KEY,
+  });
+});
+
+// Seller dashboard (kept if the admin inbox still uses the backend API)
 export const fetchMessages = apiThunk("messages/fetchAll", () => messageService.fetchMessages());
 
 export const markMessageRead = apiThunk("messages/markRead", async (id) => {
