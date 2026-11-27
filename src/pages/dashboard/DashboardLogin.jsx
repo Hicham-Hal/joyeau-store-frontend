@@ -22,7 +22,7 @@ export default function DashboardLogin() {
     setLoading(true);
     try {
       await login(username, password);
-      navigate("/espace-vendeur/tableau-de-bord");
+      navigate("/espace-vendeur/produits");
     } catch (err) {
       // wrong credentials vs. backend unreachable / server error
       const invalid = err?.status === 400 || err?.status === 401 || err?.message === "invalid_credentials";
