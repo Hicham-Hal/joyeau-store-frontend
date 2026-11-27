@@ -1,7 +1,7 @@
 import axiosClient, { USE_MOCK } from "../api/axiosClient";
 import { getDb, updateDb, delay } from "./mockDb";
 import { normalizeProduct, normalizeProducts } from "../utils/product";
-import {fromApi, toApi} from '../lib/productMapper.js'
+import { fromApi, toApi } from "../lib/productMapper";
 
 // Backend contract:
 //   GET    /products        -> Product[]

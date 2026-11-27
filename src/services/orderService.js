@@ -97,3 +97,15 @@ export async function payOrder(id, payment) {
   const { data } = await axiosClient.post(`/orders/${id}/payment`, payment);
   return data;
 }
+
+// After the customer comes back from the payment page: where does the order stand now?
+// Public, returns only { id, orderNumber, status, paid, paymentMethod, deposit, totalDue }.
+// The backend asks Chargily itself, so a card payment is confirmed even if the webhook is late.
+export async function fetchOrderStatus(id) {
+  if (USE_MOCK) {
+    await delay(300);
+    return getDb().orders.find((o) => String(o.id) === String(id)) || null;
+  }
+  const { data } = await axiosClient.get(`/orders/${id}/status`);
+  return data;
+}
