@@ -1,11 +1,14 @@
-import { Link, useLocation, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { HiOutlineCheckCircle, HiOutlineClock, HiOutlineExclamationCircle } from "react-icons/hi2";
 import { useLang } from "../context/LanguageContext";
-import { useAppSelector } from "../store/hooks";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { refreshOrderStatus } from "../store/slices/ordersSlice";
 import { formatPrice } from "../components/PriceTag";
 
-// Three cases:
+// Four cases:
+//   checking   -> the customer just came back from the Chargily page: we wait for the payment result
 //   confirmed  -> paid online, the order is confirmed automatically
 //   pending    -> paid via la poste, waiting for the seller to check the receipt
 //   unpaid     -> the order was sent but the deposit is not paid yet
@@ -15,10 +18,48 @@ export default function OrderSuccess() {
   const { state } = useLocation();
   const current = useAppSelector((s) => s.orders.current);
   const order = current && current.orderNumber === orderNumber ? current : state?.order;
+  const dispatch = useAppDispatch();
+
+  // Chargily sends the customer back here with ?paid=1. The payment may take a few seconds to be confirmed,
+  // so we ask the backend (every 3 s, 10 times at most) until the order is no longer "unpaid".
+  const [searchParams] = useSearchParams();
+  const backFromPayment = searchParams.get("paid") === "1";
+  const [gaveUp, setGaveUp] = useState(false);
+  // derived from the order itself: it stops by itself as soon as the order is confirmed
+  const checking = backFromPayment && order?.status === "unpaid" && !gaveUp;
+
+  useEffect(() => {
+    if (!checking || !order?.id) return undefined;
+    let cancelled = false;
+    let timer = null;
+    let tries = 0;
+
+    const check = async () => {
+      tries += 1;
+      try {
+        await dispatch(refreshOrderStatus(order.id)).unwrap();
+      } catch (e) {
+        // network problem: try again
+      }
+      if (cancelled) return;
+      if (tries >= 10) {
+        setGaveUp(true);
+        return;
+      }
+      timer = setTimeout(check, 3000);
+    };
+    check();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [checking, order?.id, dispatch]);
 
   const status = order?.status || "pending";
-  const view =
-    status === "confirmed"
+  const view = checking
+    ? { icon: HiOutlineClock, tone: "bg-gold-50 text-gold-600", title: t.payment.verifying, text: t.payment.verifyingText }
+    : status === "confirmed"
       ? { icon: HiOutlineCheckCircle, tone: "bg-emerald-50 text-emerald-500", title: t.orderSuccess.onlineTitle, text: t.orderSuccess.onlineText }
       : status === "unpaid"
         ? { icon: HiOutlineExclamationCircle, tone: "bg-rose-50 text-rose-400", title: t.orderSuccess.unpaidTitle, text: t.orderSuccess.unpaidText }
@@ -65,7 +106,7 @@ export default function OrderSuccess() {
       <p className="text-sm text-stone-400 mb-8">{t.orderSuccess.trackText}</p>
 
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
-        {status === "unpaid" && (
+        {status === "unpaid" && !checking && (
           <Link
             to={`/commande/paiement/${orderNumber}`}
             className="btn-shine inline-flex items-center justify-center min-h-[52px] px-8 rounded-full bg-gradient-to-r from-blush-600 to-gold-500 text-white font-semibold shadow-lg"
