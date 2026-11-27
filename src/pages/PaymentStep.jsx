@@ -1,27 +1,26 @@
-import { useRef, useState } from "react";
-import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   HiOutlineCreditCard,
   HiOutlineBanknotes,
   HiOutlineCheckCircle,
   HiOutlineArrowUpTray,
-  HiOutlineShieldCheck,
+  HiOutlineExclamationCircle,
 } from "react-icons/hi2";
 import { useLang } from "../context/LanguageContext";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { payOrder } from "../store/slices/ordersSlice";
-import { payWithSofizPay } from "../services/paymentService";
 import { uploadFile } from "../services/uploadService";
+import { redirectTo } from "../utils/redirect";
 import { formatPrice } from "../components/PriceTag";
 import CheckoutSteps from "../components/CheckoutSteps";
-import Modal from "../components/Modal";
 import Reveal from "../components/Reveal";
 
 const DEPOSIT_OPTIONS = [1000, 1500, 2000];
 
 // STEP 2 of the order: "acompte de confirmation".
-//   online      -> the order is confirmed automatically
+//   online      -> the customer is sent to the Chargily Pay page; the order is confirmed automatically
 //   via la poste -> the customer sends the receipt, the seller confirms by hand
 export default function PaymentStep() {
   const { orderNumber } = useParams();
@@ -34,11 +33,21 @@ export default function PaymentStep() {
   const [method, setMethod] = useState("online");
   const [receiptUrl, setReceiptUrl] = useState("");
   const [receiptBusy, setReceiptBusy] = useState(false);
-  const [cardOpen, setCardOpen] = useState(false);
-  const [card, setCard] = useState({ number: "", name: "", expiry: "", otp: "" });
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState("");
   const fileRef = useRef(null);
+  // Chargily sends the customer back here with ?failed=1 when the payment was canceled or refused
+  const [searchParams] = useSearchParams();
+  const paymentFailed = searchParams.get("failed") === "1";
+
+  // coming back with the browser's back button from the payment page: unlock the button
+  useEffect(() => {
+    const onShow = (e) => {
+      if (e.persisted) setPaying(false);
+    };
+    window.addEventListener("pageshow", onShow);
+    return () => window.removeEventListener("pageshow", onShow);
+  }, []);
 
   // the order of this browser is kept in the store (and survives a refresh)
   if (!order || order.orderNumber !== orderNumber) {
@@ -84,10 +93,27 @@ export default function PaymentStep() {
   }
 
   async function handleContinue() {
+    setError("");
+
+    // Card: ask the backend for the Chargily payment page, then go there.
+    // The order stays "unpaid" until Chargily confirms the payment.
     if (method === "online") {
-      setCardOpen(true);
+      setPaying(true);
+      try {
+        const updated = await dispatch(payOrder({ id: order.id, payment: { paymentMethod: "online", deposit } })).unwrap();
+        if (updated?.checkoutUrl) {
+          redirectTo(updated.checkoutUrl); // keep the button locked while the browser leaves the page
+          return;
+        }
+        navigate(`/commande/confirmation/${order.orderNumber}`, { replace: true });
+      } catch {
+        setError(t.common.error);
+        setPaying(false);
+      }
       return;
     }
+
+    // Check (receipt photo)
     if (!receiptUrl) {
       setError(t.checkout.requiredField);
       return;
@@ -95,26 +121,6 @@ export default function PaymentStep() {
     setPaying(true);
     await finish({ paymentMethod: "post", deposit, receiptImage: receiptUrl });
     setPaying(false);
-  }
-
-  async function handleCardPay(e) {
-    e.preventDefault();
-    setPaying(true);
-    try {
-      // DEMO: simulated card payment. The real flow redirects to the SofizPay page.
-      await payWithSofizPay({
-        amount: deposit,
-        fullName: `${order.customer?.firstName || ""} ${order.customer?.lastName || ""}`.trim(),
-        phone: order.customer?.phone,
-      });
-      setCardOpen(false);
-      await finish({ paymentMethod: "online", deposit });
-    } catch {
-      setCardOpen(false);
-      setError(t.common.error);
-    } finally {
-      setPaying(false);
-    }
   }
 
   return (
@@ -130,6 +136,13 @@ export default function PaymentStep() {
       </Reveal>
 
       <CheckoutSteps current={2} />
+
+      {paymentFailed && (
+        <div className="flex items-start gap-3 p-4 rounded-2xl bg-rose-50 border border-rose-100 text-rose-700 text-sm mb-3" role="alert">
+          <HiOutlineExclamationCircle size={22} className="shrink-0 mt-0.5" />
+          <p>{t.payment.failed}</p>
+        </div>
+      )}
 
       {/* the order has been sent */}
       <div className="flex items-start gap-3 p-4 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-sm mb-5">
@@ -233,75 +246,6 @@ export default function PaymentStep() {
           {t.payment.payLater}
         </Link>
       </section>
-
-      {/* Online payment (simulation) */}
-      <Modal open={cardOpen} onClose={() => !paying && setCardOpen(false)} title="SofizPay" maxWidth="max-w-md">
-        <span className="inline-block text-xs px-2 py-0.5 rounded bg-gold-100 text-gold-700 font-semibold mb-1">
-          Carte Dahabiya / CIB
-        </span>
-        <p className="text-sm text-stone-500 mb-4">
-          {formatPrice(deposit)} {t.common.dzd} — {t.checkout.depositTitle}
-        </p>
-        {!paying ? (
-          <form onSubmit={handleCardPay} className="space-y-3">
-            <input
-              required
-              inputMode="numeric"
-              autoComplete="off"
-              placeholder={t.payment.cardNumber}
-              value={card.number}
-              onChange={(e) => setCard((f) => ({ ...f, number: e.target.value.replace(/\D/g, "") }))}
-              maxLength={16}
-              className="input-field"
-              dir="ltr"
-            />
-            <input
-              required
-              placeholder={t.payment.cardName}
-              value={card.name}
-              onChange={(e) => setCard((f) => ({ ...f, name: e.target.value }))}
-              className="input-field"
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <input
-                required
-                placeholder={t.payment.cardExpiry}
-                value={card.expiry}
-                onChange={(e) => setCard((f) => ({ ...f, expiry: e.target.value }))}
-                className="input-field"
-                dir="ltr"
-              />
-              <input
-                required
-                inputMode="numeric"
-                placeholder={t.payment.cardOtp}
-                value={card.otp}
-                onChange={(e) => setCard((f) => ({ ...f, otp: e.target.value.replace(/\D/g, "") }))}
-                className="input-field"
-                dir="ltr"
-              />
-            </div>
-            <button
-              type="submit"
-              className="btn-shine w-full min-h-[52px] rounded-full bg-gradient-to-r from-blush-600 to-gold-500 text-white font-semibold mt-1"
-            >
-              {t.payment.pay} {formatPrice(deposit)} {t.common.dzd}
-            </button>
-            <p className="text-[11px] text-stone-400 text-center flex items-center justify-center gap-1">
-              <HiOutlineShieldCheck size={14} /> {t.payment.demoNote}
-            </p>
-          </form>
-        ) : (
-          <div className="py-10 flex flex-col items-center gap-4">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-              className="h-10 w-10 border-4 border-blush-200 border-t-blush-600 rounded-full"
-            />
-            <p className="text-sm text-stone-500">{t.payment.processing}</p>
-          </div>
-        )}
-      </Modal>
     </div>
   );
 }
