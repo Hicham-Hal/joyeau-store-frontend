@@ -12,6 +12,7 @@ import SectionHeading from "../components/SectionHeading";
 import ImageMarquee from "../components/ImageMarquee";
 import AnimatedText from "../components/AnimatedText";
 import Reveal from "../components/Reveal";
+import axiosClient from "../api/axiosClient";
 
 // fabric, dress, fabric, dress... (the dresses are the photos in src/data/siteImages.js)
 function mixStrip(fabrics, dresses) {
@@ -31,6 +32,36 @@ export default function Home() {
   const { categories, loaded: categoriesLoaded, failed: categoriesFailed } = useCategories();
   const [heroIndex, setHeroIndex] = useState(0);
 
+  const [homeGallery, setHomeGallery] = useState([]);
+  const [bestGallery, setBestGallery] = useState([]);
+  const [newGallery, setNewGallery] = useState([]);
+
+useEffect(() => {
+  let active = true;
+
+  const extractUrls = (items) =>
+    Array.isArray(items)
+      ? items.filter((item) => item.type !== "video").map((item) => item.url)
+      : [];
+
+  Promise.all([
+    axiosClient.get("/gallery", { params: { placement: "home" } }),
+    axiosClient.get("/gallery", { params: { placement: "best" } }),
+    axiosClient.get("/gallery", { params: { placement: "new" } }),
+  ])
+    .then(([homeRes, bestRes, newRes]) => {
+      if (!active) return;
+      setHomeGallery(extractUrls(homeRes.data));
+      setBestGallery(extractUrls(bestRes.data));
+      setNewGallery(extractUrls(newRes.data));
+    })
+    .catch(() => {});
+
+  return () => {
+    active = false;
+  };
+}, []);
+
   useEffect(() => {
     dispatch(fetchProducts());
   }, [dispatch]);
@@ -40,8 +71,13 @@ export default function Home() {
     const id = setInterval(() => setHeroIndex((i) => (i + 1) % HERO_IMAGES.length), 5000);
     return () => clearInterval(id);
   }, []);
+  
+  const strip = useMemo(() => {
+      const dresses = homeGallery.length ? [...homeGallery, ...UNIVERS_DRESSES] : UNIVERS_DRESSES;
+      return mixStrip(FABRIC_STRIP, dresses);
+    },[homeGallery]
+  )
 
-  const strip = useMemo(() => mixStrip(FABRIC_STRIP, UNIVERS_DRESSES), []);
   const bestSellers = products.filter((p) => p.isBestSeller).slice(0, 8);
   const newArrivals = products.filter((p) => p.isNew).slice(0, 8);
 
@@ -51,6 +87,7 @@ export default function Home() {
     { icon: HiOutlineTruck, title: t.home.why3Title, text: t.home.why3Text },
     { icon: HiOutlineCreditCard, title: t.home.why4Title, text: t.home.why4Text },
   ];
+  
 
   return (
     <div className="overflow-x-hidden">
@@ -193,11 +230,30 @@ export default function Home() {
       <section className="bg-gradient-to-b from-white to-blush-50/50 py-10 md:py-24">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           <SectionHeading eyebrow="⭐ Top" title={t.home.bestSellers} subtitle={t.home.bestSellersSub} />
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-7">
+            {bestGallery.map((url, i) => (
+              <Reveal key={`best-img-${url}-${i}`} delay={i * 0.06} className="w-full">
+                <Link
+                  to="/collections"
+                  className="group block aspect-[4/5] w-full rounded-2xl overflow-hidden shadow-md ring-1 ring-blush-100"
+                >
+                  <img
+                    src={url}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-cover transition-transform duration-700 md:group-hover:scale-110"
+                  />
+                </Link>
+              </Reveal>
+            ))}
+
             {(bestSellers.length ? bestSellers : products.slice(0, 4)).map((p, i) => (
               <ProductCard key={p.id} product={p} index={i} />
             ))}
           </div>
+
           <Reveal className="text-center mt-8">
             <Link
               to="/collections"
@@ -209,15 +265,34 @@ export default function Home() {
         </div>
       </section>
 
-      {/* NEW ARRIVALS ------------------------------------------------------------ */}
+     {/* NEW ARRIVALS ------------------------------------------------------------ */}
       <section className="py-10 md:py-24">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           <SectionHeading eyebrow="✨ New" title={t.home.newArrivals} subtitle={t.home.newArrivalsSub} />
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-7">
+            {newGallery.map((url, i) => (
+              <Reveal key={`new-img-${url}-${i}`} delay={i * 0.06} className="w-full">
+                <Link
+                  to="/collections"
+                  className="group block aspect-[4/5] w-full rounded-2xl overflow-hidden shadow-md ring-1 ring-blush-100"
+                >
+                  <img
+                    src={url}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-cover transition-transform duration-700 md:group-hover:scale-110"
+                  />
+                </Link>
+              </Reveal>
+            ))}
+
             {(newArrivals.length ? newArrivals : products.slice(4, 8)).map((p, i) => (
               <ProductCard key={p.id} product={p} index={i} />
             ))}
           </div>
+
           <Reveal className="text-center mt-8">
             <Link
               to="/collections"
