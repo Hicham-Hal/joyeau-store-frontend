@@ -7,6 +7,7 @@ import {
   HiOutlineMapPin,
   HiOutlineTruck,
   HiOutlineArrowUturnLeft,
+  HiOutlineMagnifyingGlass,
 } from "react-icons/hi2";
 import { useLang } from "../../context/LanguageContext";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
@@ -24,7 +25,8 @@ import { ORDER_STATUS_BADGE } from "./orderStatus";
 const TABS = [
   { id: "unpaid", match: (o) => o.status === "unpaid" },
   { id: "post", match: (o) => o.paymentMethod === "post" && o.status === "pending" },
-  { id: "online", match: (o) => o.paymentMethod === "online" && o.status !== "refused" },
+  { id: "online", match: (o) => o.paymentMethod === "online" && o.status !== "refused" && o.status !== "confirmed" },
+  { id: "confirmed", match: (o) => o.status === "confirmed" },
   { id: "refused", match: (o) => o.status === "refused" },
 ];
 
@@ -36,6 +38,7 @@ export default function DashboardOrders() {
   const loading = (status === "idle" || status === "loading") && orders.length === 0;
   const failed = status === "failed" && orders.length === 0;
   const [tab, setTab] = useState("unpaid");
+  const [search, setSearch] = useState("");
   const [receiptModal, setReceiptModal] = useState(null);
   const [busyId, setBusyId] = useState(null);
 
@@ -49,10 +52,14 @@ export default function DashboardOrders() {
 
   // the order is updated in the store when the API call succeeds
   async function handleStatus(id, newStatus, confirmText) {
+    if (!id) return;
     if (confirmText && !window.confirm(confirmText)) return;
     setBusyId(id);
     try {
       await dispatch(updateOrderStatus({ id, status: newStatus })).unwrap();
+      if (newStatus === "confirmed") {
+        setTab("confirmed");
+      }
     } catch {
       window.alert(t.common.error);
     } finally {
@@ -64,15 +71,61 @@ export default function DashboardOrders() {
     unpaid: t.dashboard.ordersUnpaid,
     post: t.dashboard.ordersPost,
     online: t.dashboard.ordersOnline,
+    confirmed: t.dashboard.ordersConfirmed || "Confirmed",
     refused: t.dashboard.ordersRefused,
   };
 
-  const sorted = useMemo(() => [...orders].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)), [orders]);
-  const filtered = sorted.filter(TABS.find((tb) => tb.id === tab).match);
+  const sorted = useMemo(
+    () => [...orders].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)),
+    [orders]
+  );
+
+  const filtered = useMemo(() => {
+    const activeTab = TABS.find((tb) => tb.id === tab);
+    const q = search.trim().toLowerCase();
+
+    return sorted.filter((o) => {
+      if (activeTab && !activeTab.match(o)) return false;
+      if (!q) return true;
+
+      const customer = o.customer || {};
+      const fullName = `${customer.firstName || ""} ${customer.lastName || ""}`.toLowerCase();
+      const orderId = String(o.orderNumber || o.id || o._id || "").toLowerCase();
+
+      return orderId.includes(q) || fullName.includes(q);
+    });
+  }, [sorted, tab, search]);
 
   return (
     <div>
-      <h1 className="font-serif font-bold text-2xl md:text-3xl text-blush-900 mb-4 md:mb-6">{t.dashboard.orders}</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 md:mb-6">
+        <h1 className="font-serif font-bold text-2xl md:text-3xl text-blush-900">{t.dashboard.orders}</h1>
+
+        <div className="relative w-full sm:w-72 md:w-80">
+          <HiOutlineMagnifyingGlass
+            size={18}
+            className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-3.5 text-stone-400"
+          />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t.dashboard.searchOrders || "Search by order # or name..."}
+            aria-label={t.dashboard.searchOrders || "Search by order number or name"}
+            className="w-full h-11 ps-10 pe-9 rounded-full bg-white border border-blush-200 text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none focus:border-blush-500 transition"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              aria-label="Clear search"
+              className="absolute top-1/2 -translate-y-1/2 end-3 text-stone-400 hover:text-stone-600"
+            >
+              <HiOutlineXMark size={16} />
+            </button>
+          )}
+        </div>
+      </div>
 
       <div className="flex gap-2 mb-5 overflow-x-auto pb-1 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-none">
         {TABS.map((tb) => (
@@ -97,14 +150,17 @@ export default function DashboardOrders() {
       ) : failed ? (
         <ErrorMessage onRetry={load} />
       ) : filtered.length === 0 ? (
-        <div className="p-10 text-center text-stone-400 bg-white rounded-2xl ring-1 ring-blush-100">{t.dashboard.noOrders}</div>
+        <div className="p-10 text-center text-stone-400 bg-white rounded-2xl ring-1 ring-blush-100">
+          {search ? t.common.noResults || "No matching orders found." : t.dashboard.noOrders}
+        </div>
       ) : (
         <div className="space-y-4">
           {filtered.map((o) => {
-            const busy = busyId === o.id;
+            const orderKeyId = o.id || o._id;
+            const busy = busyId === orderKeyId;
             const customer = o.customer || {};
             return (
-              <div key={o.id} className="p-4 md:p-5 rounded-2xl bg-white ring-1 ring-blush-100 shadow-sm">
+              <div key={orderKeyId || o.orderNumber} className="p-4 md:p-5 rounded-2xl bg-white ring-1 ring-blush-100 shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                   <div>
                     <p className="font-serif font-bold text-lg text-blush-900" dir="ltr">
@@ -205,14 +261,14 @@ export default function DashboardOrders() {
                     <>
                       <button
                         disabled={busy}
-                        onClick={() => handleStatus(o.id, "confirmed")}
+                        onClick={() => handleStatus(orderKeyId, "confirmed")}
                         className="flex items-center gap-1.5 h-11 px-4 rounded-full bg-emerald-600 text-white text-sm font-semibold active:bg-emerald-700 disabled:opacity-60"
                       >
                         <HiOutlineCheck size={17} /> {t.dashboard.confirmOrder}
                       </button>
                       <button
                         disabled={busy}
-                        onClick={() => handleStatus(o.id, "refused", t.dashboard.refuseConfirm)}
+                        onClick={() => handleStatus(orderKeyId, "refused", t.dashboard.refuseConfirm)}
                         className="flex items-center gap-1.5 h-11 px-4 rounded-full bg-rose-600 text-white text-sm font-semibold active:bg-rose-700 disabled:opacity-60"
                       >
                         <HiOutlineXMark size={17} /> {t.dashboard.rejectOrder}
@@ -222,7 +278,7 @@ export default function DashboardOrders() {
                   {o.status === "refused" && (
                     <button
                       disabled={busy}
-                      onClick={() => handleStatus(o.id, o.paymentMethod ? "pending" : "unpaid")}
+                      onClick={() => handleStatus(orderKeyId, o.paymentMethod ? "pending" : "unpaid")}
                       className="flex items-center gap-1.5 h-11 px-4 rounded-full border border-blush-200 text-sm font-medium text-stone-600 active:bg-blush-50 disabled:opacity-60"
                     >
                       <HiOutlineArrowUturnLeft size={17} /> {t.dashboard.restoreOrder}

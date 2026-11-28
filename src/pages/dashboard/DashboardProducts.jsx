@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   HiOutlinePlus,
   HiOutlinePencilSquare,
@@ -6,6 +6,7 @@ import {
   HiOutlineStar,
   HiOutlineSparkles,
   HiOutlineXMark,
+  HiOutlineMagnifyingGlass,
 } from "react-icons/hi2";
 import { useLang } from "../../context/LanguageContext";
 import { useAppDispatch, useAppSelector, useCategories, useCategoryLabel } from "../../store/hooks";
@@ -46,6 +47,7 @@ export default function DashboardProducts() {
   const status = useAppSelector((state) => state.products.status);
   const loading = (status === "idle" || status === "loading") && products.length === 0;
   const failed = status === "failed" && products.length === 0;
+  const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(makeEmptyForm());
@@ -59,6 +61,17 @@ export default function DashboardProducts() {
   useEffect(() => {
     dispatch(fetchProducts({ force: true }));
   }, [dispatch]);
+
+  const filteredProducts = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) => {
+      const fr = String(p.name?.fr || "").toLowerCase();
+      const ar = String(p.name?.ar || "").toLowerCase();
+      const current = String(p.name?.[lang] || "").toLowerCase();
+      return fr.includes(q) || ar.includes(q) || current.includes(q);
+    });
+  }, [products, search, lang]);
 
   const set = (field, value) => setForm((f) => ({ ...f, [field]: value }));
 
@@ -166,15 +179,43 @@ export default function DashboardProducts() {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-3 mb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <h1 className="font-serif font-bold text-2xl md:text-3xl text-blush-900">{t.dashboard.manageProducts}</h1>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 h-12 px-5 rounded-full bg-blush-700 text-white text-sm font-semibold active:bg-blush-800 transition shrink-0"
-        >
-          <HiOutlinePlus size={19} /> <span className="hidden sm:inline">{t.dashboard.addProduct}</span>
-          <span className="sm:hidden">{t.common.add}</span>
-        </button>
+
+        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64 md:w-72">
+            <HiOutlineMagnifyingGlass
+              size={18}
+              className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-3.5 text-stone-400"
+            />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t.dashboard.searchProducts || "Search product by name..."}
+              aria-label={t.dashboard.searchProducts || "Search product by name"}
+              className="w-full h-12 ps-10 pe-9 rounded-full bg-white border border-blush-200 text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none focus:border-blush-500 transition"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                aria-label="Clear search"
+                className="absolute top-1/2 -translate-y-1/2 end-3 text-stone-400 hover:text-stone-600"
+              >
+                <HiOutlineXMark size={16} />
+              </button>
+            )}
+          </div>
+
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-2 h-12 px-5 rounded-full bg-blush-700 text-white text-sm font-semibold active:bg-blush-800 transition shrink-0"
+          >
+            <HiOutlinePlus size={19} /> <span className="hidden sm:inline">{t.dashboard.addProduct}</span>
+            <span className="sm:hidden">{t.common.add}</span>
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -185,9 +226,13 @@ export default function DashboardProducts() {
         </div>
       ) : failed ? (
         <ErrorMessage onRetry={load} />
+      ) : filteredProducts.length === 0 ? (
+        <div className="p-10 text-center text-stone-400 bg-white rounded-2xl ring-1 ring-blush-100">
+          {search ? t.common.noResults || "No matching products found." : t.dashboard.noProducts || "No products yet."}
+        </div>
       ) : (
         <ul className="space-y-3">
-          {products.map((p) => {
+          {filteredProducts.map((p) => {
             const cover = p.images[0] || p.colors.find((c) => c.url && c.type === "image")?.url;
             return (
               <li key={p.id} className="flex items-center gap-3 p-3 rounded-2xl bg-white ring-1 ring-blush-100 shadow-sm">

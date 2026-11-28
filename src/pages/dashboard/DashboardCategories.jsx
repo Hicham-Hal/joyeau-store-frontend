@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { HiOutlinePlus, HiOutlinePencilSquare, HiOutlineTrash, HiOutlineSparkles } from "react-icons/hi2";
+import {
+  HiOutlinePlus,
+  HiOutlinePencilSquare,
+  HiOutlineTrash,
+  HiOutlineSparkles,
+  HiOutlineMagnifyingGlass,
+  HiOutlineXMark,
+} from "react-icons/hi2";
 import { useLang } from "../../context/LanguageContext";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { fetchCategories, createCategory, updateCategory, deleteCategory } from "../../store/slices/categoriesSlice";
@@ -21,6 +28,7 @@ export default function DashboardCategories() {
   const loading = (status === "idle" || status === "loading") && categories.length === 0;
   const failed = status === "failed" && categories.length === 0;
 
+  const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -43,6 +51,17 @@ export default function DashboardCategories() {
     });
     return map;
   }, [products]);
+
+  const filteredCategories = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return categories;
+    return categories.filter((cat) => {
+      const fr = String(cat.fr || "").toLowerCase();
+      const ar = String(cat.ar || "").toLowerCase();
+      const current = String(cat[lang] || "").toLowerCase();
+      return fr.includes(q) || ar.includes(q) || current.includes(q);
+    });
+  }, [categories, search, lang]);
 
   function openCreate() {
     setEditing(null);
@@ -94,15 +113,43 @@ export default function DashboardCategories() {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-3 mb-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
         <h1 className="font-serif font-bold text-2xl md:text-3xl text-blush-900">{t.dashboard.manageCategories}</h1>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 h-12 px-5 rounded-full bg-blush-700 text-white text-sm font-semibold active:bg-blush-800 transition shrink-0"
-        >
-          <HiOutlinePlus size={19} /> <span className="hidden sm:inline">{t.dashboard.addCategory}</span>
-          <span className="sm:hidden">{t.common.add}</span>
-        </button>
+
+        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64 md:w-72">
+            <HiOutlineMagnifyingGlass
+              size={18}
+              className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-3.5 text-stone-400"
+            />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t.dashboard.searchCategories || "Search collection by name..."}
+              aria-label={t.dashboard.searchCategories || "Search collection by name"}
+              className="w-full h-12 ps-10 pe-9 rounded-full bg-white border border-blush-200 text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none focus:border-blush-500 transition"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                aria-label="Clear search"
+                className="absolute top-1/2 -translate-y-1/2 end-3 text-stone-400 hover:text-stone-600"
+              >
+                <HiOutlineXMark size={16} />
+              </button>
+            )}
+          </div>
+
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-2 h-12 px-5 rounded-full bg-blush-700 text-white text-sm font-semibold active:bg-blush-800 transition shrink-0"
+          >
+            <HiOutlinePlus size={19} /> <span className="hidden sm:inline">{t.dashboard.addCategory}</span>
+            <span className="sm:hidden">{t.common.add}</span>
+          </button>
+        </div>
       </div>
       <p className="text-sm text-stone-500 mb-5">{t.dashboard.categoriesHint}</p>
 
@@ -114,11 +161,13 @@ export default function DashboardCategories() {
         </div>
       ) : failed ? (
         <ErrorMessage onRetry={load} />
-      ) : categories.length === 0 ? (
-        <div className="p-10 text-center text-stone-400 bg-white rounded-2xl ring-1 ring-blush-100">{t.dashboard.noCategories}</div>
+      ) : filteredCategories.length === 0 ? (
+        <div className="p-10 text-center text-stone-400 bg-white rounded-2xl ring-1 ring-blush-100">
+          {search ? t.common.noResults || "No matching collections found." : t.dashboard.noCategories}
+        </div>
       ) : (
         <ul className="space-y-3">
-          {categories.map((cat) => (
+          {filteredCategories.map((cat) => (
             <li key={cat.id} className="flex items-center gap-3 p-3 rounded-2xl bg-white ring-1 ring-blush-100 shadow-sm">
               {cat.image ? (
                 <img src={cat.image} alt="" className="h-20 w-16 rounded-xl object-cover object-top shrink-0 bg-blush-50" />
